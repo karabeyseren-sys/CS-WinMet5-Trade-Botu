@@ -1,0 +1,38 @@
+# ---------------------------------------------------------------------------
+# UYARI: Bu bot artık MetaTrader5 kütüphanesini kullanıyor.
+# MetaTrader5 python paketi SADECE Windows'ta ve MT5 terminali yerelde
+# çalışırken kullanılabilir. Render (Linux, Windows GUI'siz bulut ortamı)
+# bu botu ÇALIŞTIRAMAZ — bu dosya sadece referans/gelecekte ccxt tabanlı
+# bir sürüme dönerseniz diye tutulmaktadır.
+#
+# Bu botu çalıştırmak için:
+#   1) MetaTrader 5 terminalini Windows makinenizde kurup login olun.
+#   2) pip install -r requirements.txt
+#   3) uvicorn bot:app --host 0.0.0.0 --port 8000
+#   4) Dışarıdan webhook almak istiyorsanız ngrok / Cloudflare Tunnel gibi
+#      bir araçla bu yerel sunucuyu internete açın.
+# ---------------------------------------------------------------------------
+services:
+  - type: web
+    name: trade-bot
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn bot:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: WEBHOOK_SECRET
+        sync: false
+      - key: MT5_LOGIN
+        sync: false
+      - key: MT5_PASSWORD
+        sync: false
+      - key: MT5_SERVER
+        sync: false
+      - key: DEFAULT_VOLUME
+        value: "0.01"
+      - key: DEFAULT_DEVIATION
+        value: "20"
+      - key: DEFAULT_MAGIC
+        value: "234000"
+      - key: MT5_FILLING_TYPE
+        value: "IOC"

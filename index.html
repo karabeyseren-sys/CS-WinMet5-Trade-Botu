@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Trade Bot Paneli (MT5)</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --border: #262b36;
+    --text: #e6e8ec;
+    --muted: #8b91a0;
+    --green: #16c784;
+    --red: #ea3943;
+    --accent: #4f8cff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+  }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+  .grid {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+  }
+  .panel h2 { font-size: 15px; margin: 0 0 14px 0; color: var(--text); }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+  input, select {
+    width: 100%;
+    background: #0d0f14;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 9px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  .row { display: flex; gap: 10px; }
+  .row > div { flex: 1; }
+  button {
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .btn-buy { background: var(--green); color: #04150f; }
+  .btn-sell { background: var(--red); color: #200608; }
+  .btn-buy, .btn-sell { width: 100%; margin-top: 16px; }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 500; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .pill {
+    display: inline-block;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    background: #0d0f14;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    margin-right: 6px;
+  }
+  .pill.warn { color: var(--red); border-color: var(--red); }
+  #status-msg { margin-top: 12px; font-size: 12.5px; white-space: pre-wrap; word-break: break-all; }
+  .ok { color: var(--green); }
+  .err { color: var(--red); }
+  .balance-list { font-size: 12.5px; }
+  .balance-list div { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border); }
+  .profit-pos { color: var(--green); }
+  .profit-neg { color: var(--red); }
+</style>
+</head>
+<body>
+
+<h1>Trade Bot — Manuel Emir Paneli (MetaTrader5)</h1>
+<div class="sub" id="health-line">Durum yükleniyor…</div>
+
+<div class="grid">
+  <!-- Emir formu -->
+  <div class="panel">
+    <h2>Yeni Emir</h2>
+
+    <label>Sembol (MT5 formatı, örn. EURUSD, XAUUSD)</label>
+    <input id="symbol" value="EURUSD" />
+
+    <div class="row">
+      <div>
+        <label>Emir Tipi</label>
+        <select id="order_type">
+          <option value="market">Market</option>
+          <option value="limit">Limit</option>
+        </select>
+      </div>
+      <div>
+        <label>Lot (Hacim)</label>
+        <input id="volume" type="number" step="any" value="0.01" />
+      </div>
+    </div>
+
+    <div id="price-field" style="display:none">
+      <label>Limit Fiyatı</label>
+      <input id="price" type="number" step="any" />
+    </div>
+
+    <h2 style="margin-top:20px">Take Profit</h2>
+    <div class="row">
+      <div>
+        <label>Mod</label>
+        <select id="tp_mode">
+          <option value="none">Yok</option>
+          <option value="percent">Yüzde (%)</option>
+          <option value="price">Fiyat Farkı</option>
+        </select>
+      </div>
+      <div>
+        <label>Değer</label>
+        <input id="tp_value" type="number" step="any" placeholder="örn. 2" />
+      </div>
+    </div>
+
+    <h2 style="margin-top:20px">Stop Loss</h2>
+    <div class="row">
+      <div>
+        <label>Mod</label>
+        <select id="sl_mode">
+          <option value="none">Yok</option>
+          <option value="percent">Yüzde (%)</option>
+          <option value="price">Fiyat Farkı</option>
+        </select>
+      </div>
+      <div>
+        <label>Değer</label>
+        <input id="sl_value" type="number" step="any" placeholder="örn. 1" />
+      </div>
+    </div>
+
+    <div class="row">
+      <button class="btn-buy" onclick="submitOrder('buy')">AL / LONG</button>
+      <button class="btn-sell" onclick="submitOrder('sell')">SAT / SHORT</button>
+    </div>
+
+    <div id="status-msg"></div>
+  </div>
+
+  <!-- Bakiye + pozisyonlar -->
+  <div>
+    <div class="panel" style="margin-bottom:16px">
+      <div class="topbar">
+        <h2 style="margin:0">Hesap Özeti</h2>
+        <button class="btn-ghost" onclick="loadBalance()">Yenile</button>
+      </div>
+      <div id="balance" class="balance-list">—</div>
+    </div>
+
+    <div class="panel">
+      <div class="topbar">
+        <h2 style="margin:0">Açık Pozisyonlar</h2>
+        <button class="btn-ghost" onclick="loadPositions()">Yenile</button>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Sembol</th><th>Yön</th><th>Lot</th><th>Açılış</th><th>SL</th><th>TP</th><th>Kâr/Zarar</th></tr>
+        </thead>
+        <tbody id="positions-body">
+          <tr><td colspan="7">Yükleniyor…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = "";
+const POSITION_TYPE = { 0: "BUY", 1: "SELL" };
+
+document.getElementById("order_type").addEventListener("change", (e) => {
+  document.getElementById("price-field").style.display = e.target.value === "limit" ? "block" : "none";
+});
+
+async function loadHealth() {
+  try {
+    const res = await fetch(`${API}/api/health`);
+    const data = await res.json();
+    const pill = data.mt5_connected
+      ? `<span class="pill">MT5 BAĞLI</span>`
+      : `<span class="pill warn">MT5 BAĞLI DEĞİL</span>`;
+    document.getElementById("health-line").innerHTML = pill;
+  } catch (e) {
+    document.getElementById("health-line").textContent = "Backend'e bağlanılamadı.";
+  }
+}
+
+async function loadBalance() {
+  const el = document.getElementById("balance");
+  el.textContent = "Yükleniyor…";
+  try {
+    const res = await fetch(`${API}/api/balance`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Hata");
+    const rows = [
+      ["Hesap", data.name ?? "-"],
+      ["Sunucu", data.server ?? "-"],
+      ["Bakiye", `${data.balance ?? "-"} ${data.currency ?? ""}`],
+      ["Equity", `${data.equity ?? "-"} ${data.currency ?? ""}`],
+      ["Kullanılan Marjin", data.margin ?? "-"],
+      ["Boş Marjin", data.margin_free ?? "-"],
+      ["Açık K/Z", data.profit ?? "-"],
+      ["Kaldıraç", data.leverage ?? "-"],
+    ];
+    el.innerHTML = rows.map(([k, v]) => `<div><span>${k}</span><span>${v}</span></div>`).join("");
+  } catch (e) {
+    el.innerHTML = `<span class="err">${e.message}</span>`;
+  }
+}
+
+async function loadPositions() {
+  const body = document.getElementById("positions-body");
+  body.innerHTML = "<tr><td colspan='7'>Yükleniyor…</td></tr>";
+  try {
+    const res = await fetch(`${API}/api/positions`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Hata");
+    if (!data.length) { body.innerHTML = "<tr><td colspan='7'>Açık pozisyon yok.</td></tr>"; return; }
+    body.innerHTML = data.map(p => {
+      const side = POSITION_TYPE[p.type] ?? "-";
+      const profitClass = (p.profit ?? 0) >= 0 ? "profit-pos" : "profit-neg";
+      return `<tr>
+        <td>${p.symbol}</td>
+        <td>${side}</td>
+        <td>${p.volume}</td>
+        <td>${p.price_open}</td>
+        <td>${p.sl || "-"}</td>
+        <td>${p.tp || "-"}</td>
+        <td class="${profitClass}">${p.profit}</td>
+      </tr>`;
+    }).join("");
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="7" class="err">${e.message}</td></tr>`;
+  }
+}
+
+async function submitOrder(side) {
+  const statusEl = document.getElementById("status-msg");
+  statusEl.textContent = "Gönderiliyor…";
+  statusEl.className = "";
+
+  const payload = {
+    symbol: document.getElementById("symbol").value.trim(),
+    side,
+    order_type: document.getElementById("order_type").value,
+    volume: parseFloat(document.getElementById("volume").value),
+    price: document.getElementById("price").value ? parseFloat(document.getElementById("price").value) : null,
+    tp_mode: document.getElementById("tp_mode").value,
+    tp_value: document.getElementById("tp_value").value ? parseFloat(document.getElementById("tp_value").value) : null,
+    sl_mode: document.getElementById("sl_mode").value,
+    sl_value: document.getElementById("sl_value").value ? parseFloat(document.getElementById("sl_value").value) : null,
+  };
+
+  try {
+    const res = await fetch(`${API}/api/order`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Emir başarısız");
+    statusEl.className = "ok";
+    statusEl.textContent = `Emir gönderildi.\nGiriş fiyatı: ${data.entry_price}\nTP: ${data.tp_price ?? "-"}  SL: ${data.sl_price ?? "-"}`;
+    loadPositions();
+    loadBalance();
+  } catch (e) {
+    statusEl.className = "err";
+    statusEl.textContent = "Hata: " + e.message;
+  }
+}
+
+loadHealth();
+loadBalance();
+loadPositions();
+setInterval(loadPositions, 15000);
+setInterval(loadHealth, 15000);
+</script>
+</body>
+</html>
